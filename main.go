@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,9 +21,24 @@ func getUserFolder() string {
 	return homeDir
 }
 
-// Define the source directory (Downloads folder)
-func getDownloadsFolder() string {
-	return filepath.Join(getUserFolder(), "Downloads")
+func input[T any](prompt string, parseFunc func(string) (T, error)) T {
+	var result T
+	for {
+		fmt.Print(prompt)
+		var input string
+		fmt.Scanln(&input)
+		value, err := parseFunc(input)
+		if err == nil {
+			result = value
+			break
+		}
+		fmt.Println("Invalid input, please try again.")
+	}
+	return result
+}
+
+func clearScreen() {
+	fmt.Print("\033[H\033[2J")
 }
 
 // Define the file types/regex patterns, their corresponding age thresholds (in days), destination folders, and deletion flag
@@ -56,6 +73,25 @@ var defaultPatterns = regexPatternsJSON{
 	},
 }
 
+func writePatternsToFile(patterns regexPatterns) {
+	jsonData, err := json.Marshal(regexPatternsJSON{Patterns: patterns})
+	if err != nil {
+		panic(err)
+	}
+	file, err := os.Create(patternsPath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	if _, err := file.Write(jsonData); err != nil {
+		panic(err)
+	}
+}
+
+func getDownloadsFolder() string {
+	return filepath.Join(getUserFolder(), "Downloads")
+}
+
 type regexInfo struct {
 	AgeThreshold int
 	Destination  string
@@ -68,7 +104,7 @@ type regexPatternsJSON struct {
 
 type regexPatterns map[string]regexInfo
 
-var fileTypesAndInfoPath = filepath.Join(getUserFolder(), "AppData", "Local", "CleanDL", "patterns.json")
+var patternsPath = filepath.Join(getUserFolder(), "AppData", "Local", "CleanDL", "patterns.json")
 
 func createSettings(path string) {
 	// Ensure the directory exists
@@ -100,7 +136,7 @@ func createSettings(path string) {
 
 func getSettings(path string) regexPatterns {
 	settingsFile, err := os.Open(path)
-	// if we os.Open returns an error then handle it
+	// if os.Open returns an error then handle it
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -112,7 +148,7 @@ func getSettings(path string) regexPatterns {
 	var regexPatternsJSON regexPatternsJSON
 
 	// we unmarshal our byteArray which contains our
-	// jsonFile's content into 'users' which we defined above
+	// jsonFile's content into 'regexPatternsJSON' which we defined above
 	json.Unmarshal(byteValue, &regexPatternsJSON)
 	var regexPatterns regexPatterns = regexPatternsJSON.Patterns
 	return regexPatterns
@@ -224,69 +260,92 @@ func editSettings() {
 
 func addFileType() {
 	patterns := getSettings(patternsPath)
-	const (
-		AgeThreshold = "AgeThreshold"
-		Destination  = "Destination"
-		DeleteFlag   = "DeleteFlag"
-	)
 
-	var messages = map[string]string{
-		AgeThreshold: "Enter the age threshold (in days): ",
-		Destination:  "Enter the destination folder: ",
-		DeleteFlag:   "Delete the file? (true/false): ",
-	}
-	var pattern string
-	var ageThreshold int
-	var destination string
-	var deleteFlag bool
-	for key, message := range messages {
-		fmt.Print(message)
-		var value string
-		fmt.Scanln(&value)
-		switch key {
-		case AgeThreshold:
-			thisAgeThreshold, err := strconv.Atoi(value)
-			if err != nil {
-				panic(err)
-			}
-			ageThreshold = thisAgeThreshold
-		case Destination:
-			destination = value
-		case DeleteFlag:
-			thisDeleteFlag, err := strconv.ParseBool(value)
-			if err != nil {
-				panic(err)
-			}
-			deleteFlag = thisDeleteFlag
-		}
+	pattern := input("Enter the pattern (regex or simple string): ", func(input string) (string, error) {
+		return input, nil // No conversion needed for string
+	})
 
-	}
+	ageThreshold := input("Enter the age threshold (in days): ", strconv.Atoi)
+
+	destination := input("Enter the destination folder: ", func(input string) (string, error) {
+		return input, nil // No conversion needed for string
+	})
+
+	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+
 	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
 	writePatternsToFile(patterns)
 }
 
 func editFileType() {
-	//TODO: Implement this
-	println("WIP")
+	patterns := getSettings(patternsPath)
+	println("Choose a Pattern to edit:")
+	keys := make([]string, 0, len(patterns))
+	i := 1
+	for key := range patterns {
+		fmt.Printf("%d. %s\n", i, key)
+		keys = append(keys, key)
+		i++
+	}
+	var choice int
+	fmt.Scanln(&choice)
+	pattern := keys[choice-1]
+	options := []string{"Age Threshold", "Destination", "Delete Flag"}
+	println("Choose an option to edit:")
+	for i := 0; i < len(options); i++ {
+		fmt.Printf("%d. %s\n", i+1, options[i])
+	}
+
+	choice = input("Enter your choice: ", func(input string) (int, error) {
+		choice, err := strconv.Atoi(input)
+		if err != nil || choice < 1 || choice > 3 {
+			return 0, errors.New("invalid choice")
+		}
+		return choice, nil
+	})
+
+	var ageThreshold int
+	var destination string
+	var deleteFlag bool
+
+	switch choice {
+	case 1:
+		newAgeThreshold := input("Enter the new age threshold (in days): ", strconv.Atoi)
+		ageThreshold = newAgeThreshold
+	case 2:
+		newDestination := input("Enter the new destination folder: ", func(input string) (string, error) {
+			return input, nil // No conversion needed for string
+		})
+		destination = newDestination
+	case 3:
+		newDeleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+		deleteFlag = newDeleteFlag
+	default:
+		println("Invalid choice. Exiting...")
+	}
+	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
+	writePatternsToFile(patterns)
 }
 
 func deleteFileType() {
 	patterns := getSettings(patternsPath)
 	println("Choose a Pattern to delete:")
+	keys := make([]string, 0, len(patterns))
 	i := 1
 	for key := range patterns {
 		fmt.Printf("%d. %s\n", i, key)
+		keys = append(keys, key)
 		i++
 	}
-	var choice int
-	fmt.Scanln(&choice)
-	i = 1
-	for key := range patterns {
-		if i == choice {
-			delete(patterns, key)
-			break
+
+	choice := input("Enter your choice: ", func(input string) (int, error) {
+		choice, err := strconv.Atoi(input)
+		if err != nil || choice < 1 || choice > len(keys) {
+			return 0, errors.New("invalid choice")
 		}
-		i++
-	}
+		return choice, nil
+	})
+
+	delete(patterns, keys[choice-1])
 	writePatternsToFile(patterns)
 }
