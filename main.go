@@ -41,38 +41,6 @@ func clearScreen() {
 	fmt.Print("\033[H\033[2J")
 }
 
-// Define the file types/regex patterns, their corresponding age thresholds (in days), destination folders, and deletion flag
-var defaultPatterns = regexPatternsJSON{
-	Patterns: regexPatterns{
-		".pdf": {
-			AgeThreshold: 14,
-			Destination:  filepath.Join(os.Getenv("USERPROFILE"), "OneDrive/Documents"),
-			DeleteFlag:   false,
-		},
-		".reg": {
-			AgeThreshold: 0,
-			Destination:  `C:\bin\reg`,
-			DeleteFlag:   false,
-		},
-		".msi": {
-			AgeThreshold: 0,
-			Destination:  `C:\bin\msi`,
-			DeleteFlag:   false,
-		},
-		`.*(Installer|Setup)\.exe$`: {
-			AgeThreshold: 14,
-			Destination:  "",
-			DeleteFlag:   true,
-		},
-		`.*Tool\.exe$`: {
-			AgeThreshold: 0,
-			Destination:  `C:\bin\exe`,
-			DeleteFlag:   false,
-		},
-		// Add more patterns, thresholds, folders, and deletion flags as needed
-	},
-}
-
 func writePatternsToFile(patterns regexPatterns) {
 	jsonData, err := json.Marshal(regexPatternsJSON{Patterns: patterns})
 	if err != nil {
@@ -122,7 +90,7 @@ func createSettings(path string) {
 		defer file.Close()
 
 		// Serialize the map to JSON
-		jsonData, err := json.Marshal(defaultPatterns)
+		jsonData, err := json.Marshal(regexPatternsJSON{Patterns: regexPatterns{}})
 		if err != nil {
 			panic(err) // Consider more graceful error handling
 		}
