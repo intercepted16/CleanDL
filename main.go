@@ -150,8 +150,8 @@ func processFiles(patterns regexPatterns, downloadsFolder string) {
 
 			if matched {
 				if fileAgeDays > info.AgeThreshold {
-					fmt.Printf("File age: %d", fileAgeDays)
-					fmt.Printf("Age threshold: %d", info.AgeThreshold)
+					fmt.Printf("File age: %d\n", fileAgeDays)
+					fmt.Printf("Age threshold: %d\n", info.AgeThreshold)
 					if info.DeleteFlag {
 						os.Remove(filePath) // Delete the file
 						fmt.Printf("Deleted: %s\n", filePath)
@@ -167,10 +167,126 @@ func processFiles(patterns regexPatterns, downloadsFolder string) {
 }
 
 func main() {
-	createSettings(fileTypesAndInfoPath)
-	patterns := getSettings(fileTypesAndInfoPath)
+	createSettings(patternsPath)
+	options := []string{"Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
+	println("Choose an option:\n")
+	for i := 0; i < len(options); i++ {
+		fmt.Printf("%d. %s\n", i+1, options[i])
+	}
+	var choice int
+	fmt.Scanln(&choice)
+
+	switch choice {
+	case 1:
+		clearScreen()
+		organizeFolder()
+	case 2:
+		clearScreen()
+		editSettings()
+	case 3:
+		os.Exit(0)
+
+	default:
+		println("Invalid choice. Exiting...")
+	}
+}
+
+func organizeFolder() {
+	patterns := getSettings(patternsPath)
 	downloadsFolder := getDownloadsFolder()
 	print("Processing files in: ", downloadsFolder, "\n")
 	processFiles(patterns, downloadsFolder)
 	print("\nDone!", "\n")
+}
+
+func editSettings() {
+	options := []string{"Add Pattern", "Edit Pattern", "Delete Pattern", "Exit"}
+	println("Choose an option:\n")
+	for i := 0; i < len(options); i++ {
+		fmt.Printf("%d. %s\n", i+1, options[i])
+	}
+	var choice int
+	fmt.Scanln(&choice)
+	switch choice {
+	case 1:
+		addFileType()
+	case 2:
+		editFileType()
+	case 3:
+		deleteFileType()
+	case 4:
+		clearScreen()
+		main()
+	default:
+		println("Invalid choice. Exiting...")
+	}
+}
+
+func addFileType() {
+	patterns := getSettings(patternsPath)
+	const (
+		AgeThreshold = "AgeThreshold"
+		Destination  = "Destination"
+		DeleteFlag   = "DeleteFlag"
+	)
+
+	var messages = map[string]string{
+		AgeThreshold: "Enter the age threshold (in days): ",
+		Destination:  "Enter the destination folder: ",
+		DeleteFlag:   "Delete the file? (true/false): ",
+	}
+	var pattern string
+	var ageThreshold int
+	var destination string
+	var deleteFlag bool
+	for key, message := range messages {
+		fmt.Print(message)
+		var value string
+		fmt.Scanln(&value)
+		switch key {
+		case AgeThreshold:
+			thisAgeThreshold, err := strconv.Atoi(value)
+			if err != nil {
+				panic(err)
+			}
+			ageThreshold = thisAgeThreshold
+		case Destination:
+			destination = value
+		case DeleteFlag:
+			thisDeleteFlag, err := strconv.ParseBool(value)
+			if err != nil {
+				panic(err)
+			}
+			deleteFlag = thisDeleteFlag
+		}
+
+	}
+	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
+	writePatternsToFile(patterns)
+}
+
+func editFileType() {
+	//TODO: Implement this
+	println("WIP")
+}
+
+func deleteFileType() {
+	patterns := getSettings(patternsPath)
+	println("Choose a Pattern to delete:")
+	i := 1
+	for key := range patterns {
+		fmt.Printf("%d. %s\n", i, key)
+		i++
+	}
+	var choice int
+	fmt.Scanln(&choice)
+	i = 1
+	for key := range patterns {
+		if i == choice {
+			delete(patterns, key)
+			break
+		}
+		i++
+	}
+	writePatternsToFile(patterns)
 }
