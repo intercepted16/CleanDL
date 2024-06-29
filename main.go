@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
 func getUserFolder() string {
@@ -171,27 +174,67 @@ func processFiles(patterns regexPatterns, downloadsFolder string) {
 }
 
 func main() {
-	createSettings(patternsPath)
-	options := []string{"Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
-	println("Choose an option:\n")
-	for i := 0; i < len(options); i++ {
-		fmt.Printf("%d. %s\n", i+1, options[i])
+	app := &cli.App{
+		Name:  "CleanDL",
+		Usage: "Organize your downloads folder",
+		Action: func(cCtx *cli.Context) error {
+			createSettings(patternsPath)
+			options := []string{"Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
+			println("Choose an option:\n")
+			for i := 0; i < len(options); i++ {
+				fmt.Printf("%d. %s\n", i+1, options[i])
+			}
+			var choice int
+			fmt.Scanln(&choice)
+
+			switch choice {
+			case 1:
+				clearScreen()
+				organizeFolder()
+			case 2:
+				clearScreen()
+				editSettings()
+			case 3:
+				os.Exit(0)
+
+			default:
+				println("Invalid choice. Exiting...")
+			}
+			return nil
+		},
+		Commands: []*cli.Command{
+			{
+				Name:    "add",
+				Aliases: []string{"a"},
+				Usage:   "add a new pattern",
+				Action: func(cCtx *cli.Context) error {
+					addFileType()
+					return nil
+				},
+			},
+			{
+				Name:    "edit",
+				Aliases: []string{"e"},
+				Usage:   "edit a pattern",
+				Action: func(cCtx *cli.Context) error {
+					editFileType()
+					return nil
+				},
+			},
+			{
+				Name:    "remove",
+				Aliases: []string{"r"},
+				Usage:   "remove a pattern",
+				Action: func(cCtx *cli.Context) error {
+					deleteFileType()
+					return nil
+				},
+			},
+		},
 	}
-	var choice int
-	fmt.Scanln(&choice)
 
-	switch choice {
-	case 1:
-		clearScreen()
-		organizeFolder()
-	case 2:
-		clearScreen()
-		editSettings()
-	case 3:
-		os.Exit(0)
-
-	default:
-		println("Invalid choice. Exiting...")
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
 }
 
