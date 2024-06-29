@@ -8,21 +8,59 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
-	"unsafe"
 
 	"github.com/urfave/cli/v2"
 )
 
+type regexInfo struct {
+	AgeThreshold int
+	Destination  string
+	DeleteFlag   bool
+}
+
+type regexPatternsJSON struct {
+	Patterns regexPatterns
+}
+
+type regexPatterns map[string]regexInfo
+
+type flagPointers struct {
+	Pattern      *string
+	AgeThreshold *int
+	Destination  *string
+	DeleteFlag   *bool
+}
+
 func getFlag[T any](cCtx *cli.Context, flagName string) *T {
-	var pattern *T
-	if cCtx.IsSet(flagName) {
-		patternValue := cCtx.String(flagName)
-		pattern = (*T)(unsafe.Pointer(&patternValue))
+	if !cCtx.IsSet(flagName) {
+		return nil
 	}
-	return pattern
+
+	var result T
+	resultType := reflect.TypeOf(result)
+	var value interface{}
+
+	switch resultType.Kind() {
+	case reflect.String:
+		value = cCtx.String(flagName)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		value = cCtx.Int(flagName)
+	case reflect.Bool:
+		value = cCtx.Bool(flagName)
+	default:
+		// Handle unsupported types
+		return nil
+	}
+
+	// I questioned the safety of this type assertion, but it's safe because we're checking the type above
+
+	// Convert the value to type T and return a pointer to it
+	result = value.(T)
+	return &result
 }
 
 func getUserFolder() string {
@@ -71,18 +109,6 @@ func writePatternsToFile(patterns regexPatterns) {
 func getDownloadsFolder() string {
 	return filepath.Join(getUserFolder(), "Downloads")
 }
-
-type regexInfo struct {
-	AgeThreshold int
-	Destination  string
-	DeleteFlag   bool
-}
-
-type regexPatternsJSON struct {
-	Patterns regexPatterns
-}
-
-type regexPatterns map[string]regexInfo
 
 var patternsPath = filepath.Join(getUserFolder(), "AppData", "Local", "CleanDL", "patterns.json")
 
@@ -186,6 +212,7 @@ func main() {
 			for i := 0; i < len(options); i++ {
 				fmt.Printf("%d. %s\n", i+1, options[i])
 			}
+			flags := flagPointers{AgeThreshold: nil, Destination: nil, DeleteFlag: nil}
 			var choice int
 			fmt.Scanln(&choice)
 
@@ -195,7 +222,7 @@ func main() {
 				organizeFolder()
 			case 2:
 				clearScreen()
-				editSettings(cCtx.Args())
+				editSettings(flags)
 			case 3:
 				os.Exit(0)
 
@@ -227,35 +254,13 @@ func main() {
 				},
 				Action: func(cCtx *cli.Context) error {
 					// Use a pointer to their `string`, `int` and `bool` to represent their respective types or undefined (nil)
+					// These must be used safely by checking if they are nil or not before dereferencing
 					var pattern *string = getFlag[string](cCtx, "pattern")
 					var ageThreshold *int = getFlag[int](cCtx, "ageThreshold")
 					var destination *string = getFlag[string](cCtx, "destination")
 					var deleteFlag *bool = getFlag[bool](cCtx, "deleteFlag")
-					// Safely use the pointers by checking if they are not nil before dereferencing
-					if pattern != nil {
-						println("Pattern:", *pattern)
-					} else {
-						println("Pattern not provided")
-					}
-
-					if ageThreshold != nil {
-						println("Age threshold:", *ageThreshold)
-					} else {
-						println("Age threshold not provided")
-					}
-
-					if destination != nil {
-						println("Destination:", *destination)
-					} else {
-						println("Destination not provided")
-					}
-
-					if deleteFlag != nil {
-						println("Delete flag:", *deleteFlag)
-					} else {
-						println("Delete flag not provided")
-					}
-					addFileType(cCtx.Args())
+					flags := flagPointers{Pattern: pattern, AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
+					addFileType(flags)
 					return nil
 				},
 			},
@@ -293,7 +298,7 @@ func organizeFolder() {
 	print("\nDone!", "\n")
 }
 
-func editSettings(args cli.Args) {
+func editSettings(flags flagPointers) {
 	options := []string{"Add Pattern", "Edit Pattern", "Delete Pattern", "Exit"}
 	println("Choose an option:\n")
 	for i := 0; i < len(options); i++ {
@@ -303,7 +308,7 @@ func editSettings(args cli.Args) {
 	fmt.Scanln(&choice)
 	switch choice {
 	case 1:
-		addFileType(args)
+		addFileType(flags)
 	case 2:
 		editFileType()
 	case 3:
@@ -316,21 +321,40 @@ func editSettings(args cli.Args) {
 	}
 }
 
-func addFileType(args cli.Args) {
-	println("args", args.Present())
+func addFileType(flags flagPointers) {
+	var pattern string
+	var ageThreshold int
+	var destination string
+	var deleteFlag bool
 	patterns := getSettings(patternsPath)
 
-	pattern := input("Enter the pattern (regex): ", func(input string) (string, error) {
-		return input, nil // No conversion needed for string
-	})
+	if flags.Pattern == nil {
+		pattern = input("Enter the pattern (regex): ", func(input string) (string, error) {
+			return input, nil // No conversion needed for string
+		})
+	} else {
+		pattern = *flags.Pattern
+	}
 
-	ageThreshold := input("Enter the age threshold (in days): ", strconv.Atoi)
+	if flags.AgeThreshold == nil {
+		ageThreshold = input("Enter the age threshold (in days): ", strconv.Atoi)
+	} else {
+		ageThreshold = *flags.AgeThreshold
+	}
 
-	destination := input("Enter the destination folder: ", func(input string) (string, error) {
-		return input, nil // No conversion needed for string
-	})
+	if flags.Destination == nil {
+		destination = input("Enter the destination folder: ", func(input string) (string, error) {
+			return input, nil // No conversion needed for string
+		})
+	} else {
+		destination = *flags.Destination
+	}
 
-	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+	if flags.DeleteFlag == nil {
+		deleteFlag = input("Delete the file? (true/false): ", strconv.ParseBool)
+	} else {
+		deleteFlag = *flags.DeleteFlag
+	}
 	delete(patterns, pattern)
 	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
 	writePatternsToFile(patterns)
