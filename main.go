@@ -196,6 +196,15 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
+				Name:    "organize",
+				Aliases: []string{"o"},
+				Usage:   "organize the downloads folder",
+				Action: func(cCtx *cli.Context) error {
+					organizeFolder()
+					return nil
+				},
+			},
+			{
 				Name:    "add",
 				Aliases: []string{"a"},
 				Usage:   "add a new pattern",
