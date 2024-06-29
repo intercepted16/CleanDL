@@ -11,9 +11,19 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"github.com/urfave/cli/v2"
 )
+
+func getFlag[T any](cCtx *cli.Context, flagName string) *T {
+	var pattern *T
+	if cCtx.IsSet(flagName) {
+		patternValue := cCtx.String(flagName)
+		pattern = (*T)(unsafe.Pointer(&patternValue))
+	}
+	return pattern
+}
 
 func getUserFolder() string {
 	homeDir, err := os.UserHomeDir()
@@ -185,7 +195,7 @@ func main() {
 				organizeFolder()
 			case 2:
 				clearScreen()
-				editSettings()
+				editSettings(cCtx.Args())
 			case 3:
 				os.Exit(0)
 
@@ -208,8 +218,44 @@ func main() {
 				Name:    "add",
 				Aliases: []string{"a"},
 				Usage:   "add a new pattern",
+				Args:    true,
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "pattern", Aliases: []string{"p"}, Required: true, Usage: "The pattern in the form of a regex"},
+					&cli.IntFlag{Name: "ageThreshold", Aliases: []string{"t"}, Required: true, DefaultText: "14", Usage: "The age threshold in days"},
+					&cli.StringFlag{Name: "destination", Aliases: []string{"m"}, Usage: "The directory to be moved to"},
+					&cli.BoolFlag{Name: "deleteFlag", Aliases: []string{"d"}, Usage: "Delete the file"},
+				},
 				Action: func(cCtx *cli.Context) error {
-					addFileType()
+					// Use a pointer to their `string`, `int` and `bool` to represent their respective types or undefined (nil)
+					var pattern *string = getFlag[string](cCtx, "pattern")
+					var ageThreshold *int = getFlag[int](cCtx, "ageThreshold")
+					var destination *string = getFlag[string](cCtx, "destination")
+					var deleteFlag *bool = getFlag[bool](cCtx, "deleteFlag")
+					// Safely use the pointers by checking if they are not nil before dereferencing
+					if pattern != nil {
+						println("Pattern:", *pattern)
+					} else {
+						println("Pattern not provided")
+					}
+
+					if ageThreshold != nil {
+						println("Age threshold:", *ageThreshold)
+					} else {
+						println("Age threshold not provided")
+					}
+
+					if destination != nil {
+						println("Destination:", *destination)
+					} else {
+						println("Destination not provided")
+					}
+
+					if deleteFlag != nil {
+						println("Delete flag:", *deleteFlag)
+					} else {
+						println("Delete flag not provided")
+					}
+					addFileType(cCtx.Args())
 					return nil
 				},
 			},
@@ -247,7 +293,7 @@ func organizeFolder() {
 	print("\nDone!", "\n")
 }
 
-func editSettings() {
+func editSettings(args cli.Args) {
 	options := []string{"Add Pattern", "Edit Pattern", "Delete Pattern", "Exit"}
 	println("Choose an option:\n")
 	for i := 0; i < len(options); i++ {
@@ -257,7 +303,7 @@ func editSettings() {
 	fmt.Scanln(&choice)
 	switch choice {
 	case 1:
-		addFileType()
+		addFileType(args)
 	case 2:
 		editFileType()
 	case 3:
@@ -270,7 +316,8 @@ func editSettings() {
 	}
 }
 
-func addFileType() {
+func addFileType(args cli.Args) {
+	println("args", args.Present())
 	patterns := getSettings(patternsPath)
 
 	pattern := input("Enter the pattern (regex): ", func(input string) (string, error) {
