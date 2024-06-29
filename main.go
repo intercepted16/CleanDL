@@ -283,7 +283,7 @@ func addFileType() {
 	})
 
 	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
-
+	delete(patterns, pattern)
 	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
 	writePatternsToFile(patterns)
 }
@@ -300,8 +300,8 @@ func editFileType() {
 	}
 	var choice int
 	fmt.Scanln(&choice)
-	pattern := keys[choice-1]
-	options := []string{"Age Threshold", "Destination", "Delete Flag"}
+	oldPattern := keys[choice-1]
+	options := []string{"Pattern", "Age Threshold", "Destination", "Delete Flag"}
 	println("Choose an option to edit:")
 	for i := 0; i < len(options); i++ {
 		fmt.Printf("%d. %s\n", i+1, options[i])
@@ -318,22 +318,29 @@ func editFileType() {
 	var ageThreshold int
 	var destination string
 	var deleteFlag bool
+	var pattern string
 
 	switch choice {
 	case 1:
+		newPattern := input("Enter the new pattern (regex or simple string): ", func(input string) (string, error) {
+			return input, nil // No conversion needed for string
+		})
+		pattern = newPattern
+	case 2:
 		newAgeThreshold := input("Enter the new age threshold (in days): ", strconv.Atoi)
 		ageThreshold = newAgeThreshold
-	case 2:
+	case 3:
 		newDestination := input("Enter the new destination folder: ", func(input string) (string, error) {
 			return input, nil // No conversion needed for string
 		})
 		destination = newDestination
-	case 3:
+	case 4:
 		newDeleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
 		deleteFlag = newDeleteFlag
 	default:
 		println("Invalid choice. Exiting...")
 	}
+	delete(patterns, oldPattern)
 	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
 	writePatternsToFile(patterns)
 }
