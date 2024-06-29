@@ -48,8 +48,8 @@ func initApp() *cli.App {
 				Usage:   "add a new pattern",
 				Args:    true,
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "pattern", Aliases: []string{"p"}, Required: true, Usage: "The pattern in the form of a regex"},
-					&cli.IntFlag{Name: "ageThreshold", Aliases: []string{"t"}, Required: true, DefaultText: "14", Usage: "The age threshold in days"},
+					&cli.StringFlag{Name: "pattern", Aliases: []string{"p"}, Usage: "The pattern in the form of a regex"},
+					&cli.IntFlag{Name: "ageThreshold", Aliases: []string{"t"}, DefaultText: "14", Usage: "The age threshold in days"},
 					&cli.StringFlag{Name: "destination", Aliases: []string{"m"}, Usage: "The directory to be moved to"},
 					&cli.BoolFlag{Name: "deleteFlag", Aliases: []string{"d"}, Usage: "Delete the file"},
 				},
