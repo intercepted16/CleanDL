@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -143,16 +142,9 @@ func processFiles(patterns regexPatterns, downloadsFolder string) {
 		fileAgeDays := int(currentTime.Sub(fileInfo.ModTime()).Hours() / 24)
 
 		for pattern, info := range patterns {
-			matched := false
-			if strings.HasSuffix(pattern, "$") {
-				// Regex pattern match
-				matched, err = regexp.MatchString(pattern, file.Name())
-				if err != nil {
-					panic(err)
-				}
-			} else {
-				// Simple string match
-				matched = strings.HasSuffix(file.Name(), pattern)
+			matched, err := regexp.MatchString(pattern, file.Name())
+			if err != nil {
+				panic(err)
 			}
 
 			if matched {
@@ -272,7 +264,7 @@ func editSettings() {
 func addFileType() {
 	patterns := getSettings(patternsPath)
 
-	pattern := input("Enter the pattern (regex or simple string): ", func(input string) (string, error) {
+	pattern := input("Enter the pattern (regex): ", func(input string) (string, error) {
 		return input, nil // No conversion needed for string
 	})
 
