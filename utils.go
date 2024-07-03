@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/fatih/color"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -61,7 +63,7 @@ func input[T any](prompt string, parseFunc func(string) (T, error)) T {
 			result = value
 			break
 		}
-		fmt.Println("Invalid input, please try again.")
+		color.Red(err.Error())
 	}
 	return result
 }

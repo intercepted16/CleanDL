@@ -2,9 +2,62 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	"os"
+	"regexp"
 	"strconv"
 )
+
+func getPattern() string {
+	// get pattern input with error handling
+	pattern := input("Enter the pattern (regex): ", func(input string) (string, error) {
+		var error error
+		if input != "" {
+			if !isValidRegex(input) {
+				error = errors.New("invalid regex pattern")
+			}
+		} else {
+			error = errors.New("pattern cannot be empty")
+		}
+		if error != nil {
+			return input, error
+		}
+		return input, nil
+	})
+
+	return pattern
+}
+
+func getAgeThreshold() int {
+	// get age threshold input with error handling
+	ageThreshold := input("Enter the age threshold (in days): ", strconv.Atoi)
+	return ageThreshold
+}
+
+func getDestination() string {
+	// get destination input with error handling
+	destination := input("Enter the destination folder: ", func(input string) (string, error) {
+		var error error
+		if input != "" {
+			// verify that the directory exists
+			if _, err := os.Stat(input); os.IsNotExist(err) {
+				error = errors.New("directory does not exist")
+			}
+		} else {
+			error = errors.New("destination cannot be empty")
+		}
+		if error != nil {
+			return input, error
+		}
+		return input, nil
+	})
+	return destination
+}
+
+func getDeleteFlag() bool {
+	// get delete flag input with error handling
+	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+	return deleteFlag
+}
 
 func crudPatterns(flags flagPointers) {
 	options := []string{"Add Pattern", "Edit Pattern", "Delete Pattern", "Exit"}
@@ -24,6 +77,11 @@ func crudPatterns(flags flagPointers) {
 	}
 }
 
+func isValidRegex(pattern string) bool {
+	_, err := regexp.Compile(pattern)
+	return err == nil
+}
+
 func addPattern(flags flagPointers) {
 	var pattern string
 	var ageThreshold int
@@ -32,29 +90,25 @@ func addPattern(flags flagPointers) {
 	patterns := getSettings(patternsPath)
 
 	if flags.Pattern == nil {
-		pattern = input("Enter the pattern (regex): ", func(input string) (string, error) {
-			return input, nil // No conversion needed for string
-		})
+		pattern = getPattern()
 	} else {
 		pattern = *flags.Pattern
 	}
 
 	if flags.AgeThreshold == nil {
-		ageThreshold = input("Enter the age threshold (in days): ", strconv.Atoi)
+		ageThreshold = getAgeThreshold()
 	} else {
 		ageThreshold = *flags.AgeThreshold
 	}
 
 	if flags.Destination == nil {
-		destination = input("Enter the destination folder: ", func(input string) (string, error) {
-			return input, nil // No conversion needed for string
-		})
+		destination = getDestination()
 	} else {
 		destination = *flags.Destination
 	}
 
 	if flags.DeleteFlag == nil {
-		deleteFlag = input("Delete the file? (true/false): ", strconv.ParseBool)
+		deleteFlag = getDeleteFlag()
 	} else {
 		deleteFlag = *flags.DeleteFlag
 	}
@@ -81,17 +135,13 @@ func editPattern() {
 
 	switch optionToEdit {
 	case 1:
-		newPattern := input("Enter the new pattern (regex or simple string): ", func(input string) (string, error) {
-			return input, nil // No conversion needed for string
-		})
+		newPattern := getPattern()
 		pattern = newPattern
 	case 2:
-		newAgeThreshold := input("Enter the new age threshold (in days): ", strconv.Atoi)
+		newAgeThreshold := getAgeThreshold()
 		ageThreshold = newAgeThreshold
 	case 3:
-		newDestination := input("Enter the new destination folder: ", func(input string) (string, error) {
-			return input, nil // No conversion needed for string
-		})
+		newDestination := getDestination()
 		destination = newDestination
 	case 4:
 		newDeleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
@@ -106,23 +156,12 @@ func editPattern() {
 
 func deletePattern() {
 	patterns := getSettings(patternsPath)
-	println("Choose a Pattern to delete:")
 	keys := make([]string, 0, len(patterns))
-	i := 1
 	for key := range patterns {
-		fmt.Printf("%d. %s\n", i, key)
 		keys = append(keys, key)
-		i++
 	}
+	patternToDelete := choice("Choose a pattern to delete: ", keys)
 
-	choice := input("Enter your choice: ", func(input string) (int, error) {
-		choice, err := strconv.Atoi(input)
-		if err != nil || choice < 1 || choice > len(keys) {
-			return 0, errors.New("invalid choice")
-		}
-		return choice, nil
-	})
-
-	delete(patterns, keys[choice-1])
+	delete(patterns, keys[patternToDelete-1])
 	writePatternsToFile(patterns)
 }
