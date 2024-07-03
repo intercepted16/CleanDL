@@ -33,30 +33,38 @@ func getAgeThreshold() int {
 	return ageThreshold
 }
 
-func getDestination() string {
+func getDeleteFlag() bool {
+	// get delete flag input with error handling
+	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+	return deleteFlag
+}
+
+func getDestination(deleteFlag bool) string {
 	// get destination input with error handling
 	destination := input("Enter the destination folder: ", func(input string) (string, error) {
 		var error error
-		if input != "" {
-			// verify that the directory exists
-			if _, err := os.Stat(input); os.IsNotExist(err) {
+
+		// Check for invalid flag and input combinations.
+		if deleteFlag && input != "" {
+			error = errors.New("destination cannot be set when delete flag is true")
+		} else if !deleteFlag && input == "" {
+			error = errors.New("destination must be set when delete flag is false")
+		}
+
+		// If input is provided and no previous errors, verify the directory exists.
+		if input != "" && error == nil {
+			_, err := os.Stat(input)
+			if os.IsNotExist(err) {
 				error = errors.New("directory does not exist")
 			}
-		} else {
-			error = errors.New("destination cannot be empty")
 		}
+
 		if error != nil {
 			return input, error
 		}
 		return input, nil
 	})
 	return destination
-}
-
-func getDeleteFlag() bool {
-	// get delete flag input with error handling
-	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
-	return deleteFlag
 }
 
 func crudPatterns(flags flagPointers) {
@@ -101,17 +109,18 @@ func addPattern(flags flagPointers) {
 		ageThreshold = *flags.AgeThreshold
 	}
 
-	if flags.Destination == nil {
-		destination = getDestination()
-	} else {
-		destination = *flags.Destination
-	}
-
 	if flags.DeleteFlag == nil {
 		deleteFlag = getDeleteFlag()
 	} else {
 		deleteFlag = *flags.DeleteFlag
 	}
+
+	if flags.Destination == nil {
+		destination = getDestination(deleteFlag)
+	} else {
+		destination = *flags.Destination
+	}
+
 	delete(patterns, pattern)
 	patterns[pattern] = regexInfo{AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
 	writePatternsToFile(patterns)
@@ -125,7 +134,7 @@ func editPattern() {
 	}
 	patternToEdit := choice("Choose a pattern to edit: ", keys)
 	oldPattern := keys[patternToEdit-1]
-	options := []string{"Pattern", "Age Threshold", "Destination", "Delete Flag"}
+	options := []string{"Pattern", "Age Threshold", "Delete Flag", "Destination"}
 	optionToEdit := choice("Choose an option to edit: ", options)
 
 	var ageThreshold int
@@ -141,11 +150,11 @@ func editPattern() {
 		newAgeThreshold := getAgeThreshold()
 		ageThreshold = newAgeThreshold
 	case 3:
-		newDestination := getDestination()
-		destination = newDestination
-	case 4:
 		newDeleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
 		deleteFlag = newDeleteFlag
+	case 4:
+		newDestination := getDestination(deleteFlag)
+		destination = newDestination
 	default:
 		println("Invalid choice. Exiting...")
 	}
