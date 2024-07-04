@@ -1,11 +1,39 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 
+	"os/exec"
+	"syscall"
+
 	"github.com/urfave/cli/v2"
 )
+
+func runDetachedProcess() error {
+	// Get the current executable path
+	exePath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	// Prepare the command to execute the duplicate process
+	cmd := exec.Command(exePath, "schedule", "--no-daemon")
+
+	// On Windows, you can configure some process attributes using cmd.SysProcAttr
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP, // Create in a new process group
+	}
+
+	// Start the process
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// No need to wait for the process to finish
+	return nil
+}
 
 func initApp() *cli.App {
 	app := &cli.App{
@@ -13,20 +41,27 @@ func initApp() *cli.App {
 		Usage: "Organize your downloads folder",
 		Action: func(cCtx *cli.Context) error {
 			createSettings(patternsPath)
-			options := []string{"Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
+			options := []string{"Schedule to run daily", "Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
 			flags := flagPointers{AgeThreshold: nil, Destination: nil, DeleteFlag: nil}
 			option := choice(DefaultOptionsMessage, options)
 
 			switch option {
 			case 1:
 				clearScreen()
-				organizeFolder()
+				err := runDetachedProcess()
+				if err != nil {
+					log.Fatal(err)
+				}
+				os.Exit(0)
+				// ScheduleDailyTask()
 			case 2:
 				clearScreen()
-				crudPatterns(flags)
+				organizeFolder()
 			case 3:
+				clearScreen()
+				crudPatterns(flags)
+			case 4:
 				os.Exit(0)
-
 			default:
 				println("Invalid choice. Exiting...")
 			}
@@ -41,6 +76,23 @@ func initApp() *cli.App {
 					organizeFolder()
 					return nil
 				},
+			},
+			{
+				Name:    "schedule",
+				Aliases: []string{"s"},
+				Usage:   "schedule the organizer; this runs indefinitely in the background",
+				Action: func(cCtx *cli.Context) error {
+					if !cCtx.Bool("no-daemon") {
+						err := runDetachedProcess()
+						if err != nil {
+							log.Fatal(err)
+						}
+						os.Exit(0)
+					}
+					ScheduleDailyTask()
+					return nil
+				},
+				Flags: []cli.Flag{&cli.BoolFlag{Name: "no-daemon", Aliases: []string{"d"}, Usage: "Don't run the organizer as a daemon", DefaultText: "false"}},
 			},
 			{
 				Name:    "add",
@@ -84,6 +136,12 @@ func initApp() *cli.App {
 				},
 			},
 		},
+	}
+	defaultHelpPrinter := cli.HelpPrinter
+	cli.HelpPrinter = func(w io.Writer, templ string, data interface{}) {
+		defaultHelpPrinter(w, templ, data)
+		// as we are running a go routine, we have to exit the program manually
+		os.Exit(0)
 	}
 
 	if err := app.Run(os.Args); err != nil {
