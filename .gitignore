@@ -27,3 +27,6 @@ go.work.sum
 
 # Output files
 *.res
+
+.vscode
+.idea

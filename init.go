@@ -90,7 +90,6 @@ func initApp() *cli.App {
 				if err != nil {
 					log.Fatal(err)
 				}
-				os.Exit(0)
 				// ScheduleDailyTask()
 			case 2:
 				clearScreen()
@@ -103,6 +102,7 @@ func initApp() *cli.App {
 			default:
 				println("Invalid choice. Exiting...")
 			}
+			os.Exit(0)
 			return nil
 		},
 		Commands: []*cli.Command{
@@ -220,8 +220,8 @@ func initApp() *cli.App {
 		},
 	}
 	defaultHelpPrinter := cli.HelpPrinter
-	cli.HelpPrinter = func(w io.Writer, templ string, data interface{}) {
-		defaultHelpPrinter(w, templ, data)
+	cli.HelpPrinter = func(w io.Writer, template string, data interface{}) {
+		defaultHelpPrinter(w, template, data)
 		// as sys tray is blocking, we need to exit the app manually
 		os.Exit(0)
 	}
