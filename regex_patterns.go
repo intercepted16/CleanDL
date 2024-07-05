@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -9,62 +10,75 @@ import (
 
 func getPattern() string {
 	// get pattern input with error handling
-	pattern := input("Enter the pattern (regex): ", func(input string) (string, error) {
-		var error error
+	pattern, err := input("Enter the pattern (regex): ", func(input string) (string, error) {
+		var err error
 		if input != "" {
 			if !isValidRegex(input) {
-				error = errors.New("invalid regex pattern")
+				err = errors.New("invalid regex pattern")
 			}
 		} else {
-			error = errors.New("pattern cannot be empty")
+			err = errors.New("pattern cannot be empty")
 		}
-		if error != nil {
-			return input, error
+		if err != nil {
+			return input, err
 		}
 		return input, nil
 	})
 
-	return pattern
+	if err != nil {
+		log.Fatal("Error reading input, exiting...")
+	}
+
+	return *pattern
 }
 
 func getAgeThreshold() int {
 	// get age threshold input with error handling
-	ageThreshold := input("Enter the age threshold (in days): ", strconv.Atoi)
-	return ageThreshold
+	ageThreshold, err := input("Enter the age threshold (in days): ", strconv.Atoi)
+	if err != nil {
+		log.Fatal("Error reading input, exiting...")
+	}
+	return *ageThreshold
 }
 
 func getDeleteFlag() bool {
 	// get delete flag input with error handling
-	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
-	return deleteFlag
+	deleteFlag, err := input("Delete the file? (true/false): ", strconv.ParseBool)
+	if err != nil {
+		log.Fatal("Error reading input, exiting...")
+	}
+	return *deleteFlag
 }
 
 func getDestination(deleteFlag bool) string {
 	// get destination input with error handling
-	destination := input("Enter the destination folder: ", func(input string) (string, error) {
-		var error error
+	destination, err := input("Enter the destination folder: ", func(input string) (string, error) {
+		var err error
 
 		// Check for invalid flag and input combinations.
 		if deleteFlag && input != "" {
-			error = errors.New("destination cannot be set when delete flag is true")
+			err = errors.New("destination cannot be set when delete flag is true")
 		} else if !deleteFlag && input == "" {
-			error = errors.New("destination must be set when delete flag is false")
+			err = errors.New("destination must be set when delete flag is false")
 		}
 
 		// If input is provided and no previous errors, verify the directory exists.
-		if input != "" && error == nil {
+		if input != "" && err == nil {
 			_, err := os.Stat(input)
 			if os.IsNotExist(err) {
-				error = errors.New("directory does not exist")
+				err = errors.New("directory does not exist")
 			}
 		}
 
-		if error != nil {
-			return input, error
+		if err != nil {
+			return input, err
 		}
 		return input, nil
 	})
-	return destination
+	if err != nil {
+		log.Fatal("Error reading input, exiting...")
+	}
+	return *destination
 }
 
 func crudPatterns(flags flagPointers) {
@@ -150,8 +164,11 @@ func editPattern() {
 		newAgeThreshold := getAgeThreshold()
 		ageThreshold = newAgeThreshold
 	case 3:
-		newDeleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
-		deleteFlag = newDeleteFlag
+		newDeleteFlag, err := input("Delete the file? (true/false): ", strconv.ParseBool)
+		if err != nil {
+			log.Fatal("Error reading input, exiting...")
+		}
+		deleteFlag = *newDeleteFlag
 	case 4:
 		newDestination := getDestination(deleteFlag)
 		destination = newDestination

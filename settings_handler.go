@@ -23,7 +23,12 @@ func createSettings(path string) {
 		if err != nil {
 			panic(err)
 		}
-		defer file.Close()
+		defer func(file *os.File) {
+			err = file.Close()
+			if err != nil {
+				fmt.Println("Error closing patterns file")
+			}
+		}(file)
 
 		// Serialize the map to JSON
 		jsonData, err := json.Marshal(regexPatternsJSON{Patterns: regexPatterns{}})
@@ -46,14 +51,22 @@ func getSettings(path string) regexPatterns {
 	}
 	fmt.Printf("Successfully Opened %s\n", path)
 	// defer the closing of our jsonFile so that we can parse it later on
-	defer settingsFile.Close()
+	defer func(settingsFile *os.File) {
+		err = settingsFile.Close()
+		if err != nil {
+			println("Error closing settings file")
+		}
+	}(settingsFile)
 	byteValue, _ := io.ReadAll(settingsFile)
 	// we initialize our custom regex array
 	var regexPatternsJSON regexPatternsJSON
 
 	// we unmarshal our byteArray which contains our
 	// jsonFile's content into 'regexPatternsJSON' which we defined above
-	json.Unmarshal(byteValue, &regexPatternsJSON)
-	var regexPatterns regexPatterns = regexPatternsJSON.Patterns
+	err = json.Unmarshal(byteValue, &regexPatternsJSON)
+	if err != nil {
+		return nil
+	}
+	var regexPatterns = regexPatternsJSON.Patterns
 	return regexPatterns
 }

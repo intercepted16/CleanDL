@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 
 	"os/exec"
 	"syscall"
@@ -14,6 +16,18 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
+func getBackgroundTaskPath() string {
+	exeArgs := []string{"schedule", "--no-daemon"}
+	exeName := "background_task.exe"
+	currentDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Error getting current directory")
+	}
+	relativePath := fmt.Sprintf("%s %s", exeName, strings.Join(exeArgs, " "))
+	exePath := filepath.Join(currentDir, relativePath)
+	return exePath
+}
+
 func addToStartup(appName, appPath string) error {
 	// Open the key for writing
 	keyPath := `Software\Microsoft\Windows\CurrentVersion\Run`
@@ -21,7 +35,12 @@ func addToStartup(appName, appPath string) error {
 	if err != nil {
 		return err
 	}
-	defer key.Close()
+	defer func(key registry.Key) {
+		err := key.Close()
+		if err != nil {
+			println("Error closing registry key")
+		}
+	}(key)
 
 	// Set the value of the registry key
 	err = key.SetStringValue(appName, appPath)
@@ -38,7 +57,12 @@ func removeFromStartup(appName string) error {
 	if err != nil {
 		return err
 	}
-	defer key.Close()
+	defer func(key registry.Key) {
+		err := key.Close()
+		if err != nil {
+			println("Error closing registry key")
+		}
+	}(key)
 
 	// Delete the value of the registry key
 	err = key.DeleteValue(appName)
@@ -92,13 +116,7 @@ func initApp() *cli.App {
 					case 1:
 						{
 							clearScreen()
-							currentDir, err := os.Getwd()
-							if err != nil {
-								log.Fatal("Error getting current directory:", err)
-							}
-							exeName := "background_task.exe schedule --no-daemon"
-							exePath := filepath.Join(currentDir, exeName)
-							err = addToStartup("CleanDL", exePath)
+							err := addToStartup("CleanDL", getBackgroundTaskPath())
 							if err != nil {
 								log.Fatal(err)
 							}
@@ -144,18 +162,7 @@ func initApp() *cli.App {
 						Aliases: []string{"a"},
 						Usage:   "add CleanDL to startup",
 						Action: func(cCtx *cli.Context) error {
-							currentDir, err := os.Getwd()
-							if err != nil {
-								log.Fatal("Error getting current directory:", err)
-								return err
-							}
-
-							exeName := "background_task.exe schedule --no-daemon"
-
-							// Join the current directory with the executable name
-							exePath := filepath.Join(currentDir, exeName)
-
-							err = addToStartup("CleanDL", exePath)
+							err := addToStartup("CleanDL", getBackgroundTaskPath())
 							if err != nil {
 								log.Fatal(err)
 							}
@@ -220,10 +227,10 @@ func initApp() *cli.App {
 				Action: func(cCtx *cli.Context) error {
 					// Use a pointer to their `string`, `int` and `bool` to represent their respective types or undefined (nil)
 					// These must be used safely by checking if they are nil or not before dereferencing
-					var pattern *string = getFlag[string](cCtx, "pattern")
-					var ageThreshold *int = getFlag[int](cCtx, "ageThreshold")
-					var destination *string = getFlag[string](cCtx, "destination")
-					var deleteFlag *bool = getFlag[bool](cCtx, "deleteFlag")
+					var pattern = getFlag[string](cCtx, "pattern")
+					var ageThreshold = getFlag[int](cCtx, "ageThreshold")
+					var destination = getFlag[string](cCtx, "destination")
+					var deleteFlag = getFlag[bool](cCtx, "deleteFlag")
 					flags := flagPointers{Pattern: pattern, AgeThreshold: ageThreshold, Destination: destination, DeleteFlag: deleteFlag}
 					addPattern(flags)
 					return nil

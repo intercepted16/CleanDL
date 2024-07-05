@@ -36,10 +36,16 @@ func processFiles(patterns regexPatterns, downloadsFolder string) {
 					fmt.Printf("File age: %d\n", fileAgeDays)
 					fmt.Printf("Age threshold: %d\n", info.AgeThreshold)
 					if info.DeleteFlag {
-						os.Remove(filePath) // Delete the file
+						err := os.Remove(filePath)
+						if err != nil {
+							return
+						} // Delete the file
 						fmt.Printf("Deleted: %s\n", filePath)
 					} else if info.Destination != "" {
-						os.Rename(filePath, filepath.Join(info.Destination, file.Name())) // Move the file
+						err := os.Rename(filePath, filepath.Join(info.Destination, file.Name()))
+						if err != nil {
+							return
+						} // Move the file
 						fmt.Printf("Moved: %s to %s\n", filePath, info.Destination)
 					}
 					break // Exit the loop after processing

@@ -45,19 +45,23 @@ func getFlag[T any](cCtx *cli.Context, flagName string) *T {
 		return nil
 	}
 
-	// I questioned the safety of this type assertion, but it's safe because we're checking the type above
+	// This is safe because we're checking the type above
 
 	// Convert the value to type T and return a pointer to it
 	result = value.(T)
 	return &result
 }
 
-func input[T any](prompt string, parseFunc func(string) (T, error)) T {
+func input[T any](prompt string, parseFunc func(string) (T, error)) (*T, error) {
 	var result T
 	for {
 		fmt.Print(prompt)
 		var input string
-		fmt.Scanln(&input)
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			println("Error reading input, try again.")
+			return nil, err
+		}
 		value, err := parseFunc(input)
 		if err == nil {
 			result = value
@@ -65,7 +69,7 @@ func input[T any](prompt string, parseFunc func(string) (T, error)) T {
 		}
 		color.Red(err.Error())
 	}
-	return result
+	return &result, nil
 }
 
 func clearScreen() {
@@ -81,7 +85,11 @@ func writePatternsToFile(patterns regexPatterns) {
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+		}
+	}(file)
 	if _, err := file.Write(jsonData); err != nil {
 		panic(err)
 	}
