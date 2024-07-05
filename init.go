@@ -79,25 +79,55 @@ func initApp() *cli.App {
 		Usage: "Organize your downloads folder",
 		Action: func(cCtx *cli.Context) error {
 			createSettings(patternsPath)
-			options := []string{"Schedule to run daily", "Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
+			options := []string{"Modify startup functionality", "Schedule to run daily", "Organize Downloads Folder", "Edit Pattern Settings", "Exit"}
 			flags := flagPointers{AgeThreshold: nil, Destination: nil, DeleteFlag: nil}
 			option := choice(DefaultOptionsMessage, options)
-
 			switch option {
 			case 1:
+				{
+					clearScreen()
+					options = []string{"Add to startup", "Remove from startup"}
+					option = choice(DefaultOptionsMessage, options)
+					switch option {
+					case 1:
+						{
+							clearScreen()
+							currentDir, err := os.Getwd()
+							if err != nil {
+								log.Fatal("Error getting current directory:", err)
+							}
+							exeName := "background_task.exe schedule --no-daemon"
+							exePath := filepath.Join(currentDir, exeName)
+							err = addToStartup("CleanDL", exePath)
+							if err != nil {
+								log.Fatal(err)
+							}
+							println("CleanDL added to startup")
+						}
+					case 2:
+						{
+							// remove from startup
+							err := removeFromStartup("CleanDL")
+							if err != nil {
+								log.Fatal(err)
+							}
+							println("CleanDL removed from startup")
+						}
+					}
+				}
+			case 2:
 				clearScreen()
 				err := runDetachedProcess()
 				if err != nil {
 					log.Fatal(err)
 				}
-				// ScheduleDailyTask()
-			case 2:
-				clearScreen()
-				organizeFolder()
 			case 3:
 				clearScreen()
-				crudPatterns(flags)
+				organizeFolder()
 			case 4:
+				clearScreen()
+				crudPatterns(flags)
+			case 5:
 				os.Exit(0)
 			default:
 				println("Invalid choice. Exiting...")
