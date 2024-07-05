@@ -30,4 +30,5 @@ func onReady() {
 
 func onExit() {
 	// clean up here
+	os.Exit(0)
 }

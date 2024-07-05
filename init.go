@@ -8,8 +8,46 @@ import (
 	"os/exec"
 	"syscall"
 
+	"path/filepath"
+
 	"github.com/urfave/cli/v2"
+	"golang.org/x/sys/windows/registry"
 )
+
+func addToStartup(appName, appPath string) error {
+	// Open the key for writing
+	keyPath := `Software\Microsoft\Windows\CurrentVersion\Run`
+	key, err := registry.OpenKey(registry.CURRENT_USER, keyPath, registry.SET_VALUE|registry.CREATE_SUB_KEY)
+	if err != nil {
+		return err
+	}
+	defer key.Close()
+
+	// Set the value of the registry key
+	err = key.SetStringValue(appName, appPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeFromStartup(appName string) error {
+	// Open the key for writing
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.SET_VALUE|registry.CREATE_SUB_KEY)
+	if err != nil {
+		return err
+	}
+	defer key.Close()
+
+	// Delete the value of the registry key
+	err = key.DeleteValue(appName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func runDetachedProcess() error {
 	// Get the current executable path
@@ -68,6 +106,50 @@ func initApp() *cli.App {
 			return nil
 		},
 		Commands: []*cli.Command{
+			{
+				Name: "startup",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "add",
+						Aliases: []string{"a"},
+						Usage:   "add CleanDL to startup",
+						Action: func(cCtx *cli.Context) error {
+							currentDir, err := os.Getwd()
+							if err != nil {
+								log.Fatal("Error getting current directory:", err)
+								return err
+							}
+
+							exeName := "background_task.exe schedule --no-daemon"
+
+							// Join the current directory with the executable name
+							exePath := filepath.Join(currentDir, exeName)
+
+							err = addToStartup("CleanDL", exePath)
+							if err != nil {
+								log.Fatal(err)
+							}
+							println("CleanDL added to startup")
+							os.Exit(0)
+							return nil
+						},
+					},
+					{
+						Name:    "remove",
+						Aliases: []string{"r"},
+						Usage:   "remove CleanDL from startup",
+						Action: func(cCtx *cli.Context) error {
+							err := removeFromStartup("CleanDL")
+							if err != nil {
+								log.Fatal(err)
+							}
+							println("CleanDL removed from startup")
+							os.Exit(0)
+							return nil
+						},
+					},
+				},
+			},
 			{
 				Name:    "organize",
 				Aliases: []string{"o"},
@@ -140,7 +222,7 @@ func initApp() *cli.App {
 	defaultHelpPrinter := cli.HelpPrinter
 	cli.HelpPrinter = func(w io.Writer, templ string, data interface{}) {
 		defaultHelpPrinter(w, templ, data)
-		// as we are running a go routine, we have to exit the program manually
+		// as sys tray is blocking, we need to exit the app manually
 		os.Exit(0)
 	}
 
