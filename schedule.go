@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -30,7 +29,7 @@ func ScheduleDailyTask() {
 		),
 	)
 	if err != nil {
-		fmt.Println(err)
+		println(err)
 	}
 	// start the scheduler
 	s.Start()

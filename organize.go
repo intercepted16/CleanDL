@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,20 +32,20 @@ func processFiles(patterns regexPatterns, downloadsFolder string) {
 
 			if matched {
 				if fileAgeDays > info.AgeThreshold {
-					fmt.Printf("File age: %d\n", fileAgeDays)
-					fmt.Printf("Age threshold: %d\n", info.AgeThreshold)
+					println("File age: %d", fileAgeDays)
+					println("Age threshold: %d", info.AgeThreshold)
 					if info.DeleteFlag {
 						err := os.Remove(filePath)
 						if err != nil {
 							return
 						} // Delete the file
-						fmt.Printf("Deleted: %s\n", filePath)
+						println("Deleted: %s", filePath)
 					} else if info.Destination != "" {
 						err := os.Rename(filePath, filepath.Join(info.Destination, file.Name()))
 						if err != nil {
 							return
 						} // Move the file
-						fmt.Printf("Moved: %s to %s\n", filePath, info.Destination)
+						println("Moved: %s to %s", filePath, info.Destination)
 					}
 					break // Exit the loop after processing
 				}

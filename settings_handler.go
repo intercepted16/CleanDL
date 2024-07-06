@@ -26,7 +26,7 @@ func createSettings(path string) {
 		defer func(file *os.File) {
 			err = file.Close()
 			if err != nil {
-				fmt.Println("Error closing patterns file")
+				println("Error closing patterns file")
 			}
 		}(file)
 
@@ -47,7 +47,7 @@ func getSettings(path string) regexPatterns {
 	settingsFile, err := os.Open(path)
 	// if os.Open returns an error then handle it
 	if err != nil {
-		fmt.Println(err)
+		println(err)
 	}
 	fmt.Printf("Successfully Opened %s\n", path)
 	// defer the closing of our jsonFile so that we can parse it later on

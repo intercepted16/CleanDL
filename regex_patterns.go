@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -10,7 +9,7 @@ import (
 
 func getPattern() string {
 	// get pattern input with error handling
-	pattern, err := input("Enter the pattern (regex): ", func(input string) (string, error) {
+	pattern := input("Enter the pattern (regex): ", func(input string) (string, error) {
 		var err error
 		if input != "" {
 			if !isValidRegex(input) {
@@ -25,34 +24,24 @@ func getPattern() string {
 		return input, nil
 	})
 
-	if err != nil {
-		log.Fatal("Error reading input, exiting...")
-	}
-
-	return *pattern
+	return pattern
 }
 
 func getAgeThreshold() int {
 	// get age threshold input with error handling
-	ageThreshold, err := input("Enter the age threshold (in days): ", strconv.Atoi)
-	if err != nil {
-		log.Fatal("Error reading input, exiting...")
-	}
-	return *ageThreshold
+	ageThreshold := input("Enter the age threshold (in days): ", strconv.Atoi)
+	return ageThreshold
 }
 
 func getDeleteFlag() bool {
 	// get delete flag input with error handling
-	deleteFlag, err := input("Delete the file? (true/false): ", strconv.ParseBool)
-	if err != nil {
-		log.Fatal("Error reading input, exiting...")
-	}
-	return *deleteFlag
+	deleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+	return deleteFlag
 }
 
 func getDestination(deleteFlag bool) string {
 	// get destination input with error handling
-	destination, err := input("Enter the destination folder: ", func(input string) (string, error) {
+	destination := input("Enter the destination folder: ", func(input string) (string, error) {
 		var err error
 
 		// Check for invalid flag and input combinations.
@@ -75,10 +64,7 @@ func getDestination(deleteFlag bool) string {
 		}
 		return input, nil
 	})
-	if err != nil {
-		log.Fatal("Error reading input, exiting...")
-	}
-	return *destination
+	return destination
 }
 
 func crudPatterns(flags flagPointers) {
@@ -164,11 +150,8 @@ func editPattern() {
 		newAgeThreshold := getAgeThreshold()
 		ageThreshold = newAgeThreshold
 	case 3:
-		newDeleteFlag, err := input("Delete the file? (true/false): ", strconv.ParseBool)
-		if err != nil {
-			log.Fatal("Error reading input, exiting...")
-		}
-		deleteFlag = *newDeleteFlag
+		newDeleteFlag := input("Delete the file? (true/false): ", strconv.ParseBool)
+		deleteFlag = newDeleteFlag
 	case 4:
 		newDestination := getDestination(deleteFlag)
 		destination = newDestination

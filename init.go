@@ -5,9 +5,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
-
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"path/filepath"
@@ -18,7 +17,7 @@ import (
 
 func getBackgroundTaskPath() string {
 	exeArgs := []string{"schedule", "--no-daemon"}
-	exeName := "background_task.exe"
+	exeName := "cleandl-daemon.exe"
 	currentDir, err := os.Getwd()
 	if err != nil {
 		log.Fatal("Error getting current directory")

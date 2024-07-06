@@ -12,12 +12,12 @@ func main() {
 }
 
 func onReady() {
-	//get the icon bytes
+	// get the icon bytes
 	Icon, err := os.ReadFile("assets/icon.ico")
 	if err != nil {
 		panic(err)
 	}
-	//set the icon
+	// set the icon
 	systray.SetIcon(Icon)
 	systray.SetTitle("CleanDL")
 	systray.SetTooltip("Organize your downloads folder")

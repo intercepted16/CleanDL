@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -52,28 +53,34 @@ func getFlag[T any](cCtx *cli.Context, flagName string) *T {
 	return &result
 }
 
-func input[T any](prompt string, parseFunc func(string) (T, error)) (*T, error) {
+func input[T any](prompt string, parseFunc func(string) (T, error)) T {
 	var result T
 	for {
-		fmt.Print(prompt)
+		print(prompt)
 		var input string
 		_, err := fmt.Scanln(&input)
 		if err != nil {
-			println("Error reading input, try again.")
-			return nil, err
+			if err == io.EOF {
+				// Exit on EOF as it is likely the user is trying to quit
+				color.Red("Exiting...")
+				os.Exit(0)
+			}
+			// Non critical error, just print it and continue
+			println("Error reading input, please try again.")
+			continue
 		}
 		value, err := parseFunc(input)
 		if err == nil {
 			result = value
 			break
 		}
-		color.Red(err.Error())
+		color.Red("Invalid input: %s", err.Error())
 	}
-	return &result, nil
+	return result
 }
 
 func clearScreen() {
-	fmt.Print("\033[H\033[2J")
+	print("\033[H\033[2J")
 }
 
 func writePatternsToFile(patterns regexPatterns) {

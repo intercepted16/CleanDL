@@ -1,12 +1,13 @@
 # Define the output names
-OUT_HIDDEN=background_task.exe
+OUT_HIDDEN=cleandl-daemon.exe
 OUT_TERMINAL=CleanDL.exe
-RC=background_task.rc
+RC=cleandl-daemon.rc
+RES=cleandl-daemon.res
 
 # Build command for the hidden background task version
 build-hidden:
-	windres $(RC) -O coff -o background_task.res
-	go build -ldflags="-H windowsgui -linkmode external -extldflags '-static -Wl,background_task.res'" -o $(OUT_HIDDEN)
+	windres $(RC) -O coff -o $(RES)
+	go build -ldflags="-H windowsgui -linkmode external -extldflags '-static -Wl,$(RES)'" -o $(OUT_HIDDEN)
 
 # Build command for the terminal version 
 build-terminal:
