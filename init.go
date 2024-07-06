@@ -154,7 +154,8 @@ func initApp() *cli.App {
 		},
 		Commands: []*cli.Command{
 			{
-				Name: "startup",
+				Name:  "startup",
+				Usage: "modify startup functionality",
 				Subcommands: []*cli.Command{
 					{
 						Name:    "add",
@@ -197,7 +198,7 @@ func initApp() *cli.App {
 			},
 			{
 				Name:    "schedule",
-				Aliases: []string{"s"},
+				Aliases: []string{"sch"},
 				Usage:   "schedule the organizer; this runs indefinitely in the background",
 				Action: func(cCtx *cli.Context) error {
 					if !cCtx.Bool("no-daemon") {
